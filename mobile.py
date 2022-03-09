@@ -37,6 +37,9 @@ class Node:
 
     def __init__(self, left=None, right=None, dist=None):
         self.ID = next(Node.gen_id)
+        if (left is None and right is not None) or (right is None and
+                                                    left is not None):
+            raise ValueError("Node must have either zero or two children")
         self.left = left  # note no actual distinction bt left and right
         self.right = right
         self.dist = dist
