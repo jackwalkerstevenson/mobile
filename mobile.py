@@ -19,14 +19,11 @@ from math import sqrt
 import itertools
 import numpy as np
 
-layer_height = 4
+layer_height = 1
 linear_density = 1
 parent_linkage = 0.5
 leaf_linkage = 0
-first_leaf_mass = 100
-
-num_leaves = 3
-num_nonleaves = num_leaves - 1
+first_leaf_mass = 20
 
 
 def edge_mass(horizontal, vertical):
@@ -38,27 +35,14 @@ class Node:
     gen_id = itertools.count()  # using this as coeff index
     # therefore have to create all the leaves first
 
-    def __init__(self, left=None, right=None, horiz=None):
+    def __init__(self, left=None, right=None, dist=None):
         self.ID = next(Node.gen_id)
         self.left = left  # note no actual distinction bt left and right
         self.right = right
-        self.horiz = horiz
+        self.dist = dist
 
     def is_leaf(self):
         return self.left is None and self.right is None
-
-    def set_horiz(self, horiz):
-        self.horiz = horiz
-
-    def set_left(self, child):
-        if self.horiz is None:
-            raise ValueError("attempted to add child without setting horiz")
-        self.left = child
-
-    def set_right(self, child):
-        if self.horiz is None:
-            raise ValueError("attempted to add child without setting horiz")
-        self.right = child
 
     def sum(self):
         if self.is_leaf():
@@ -71,9 +55,8 @@ class Node:
             right = self.right.sum()
             coeff_row = left + right
             # plus linkage mass for yourself and 2 edge weights in ordinate col
-            edge = edge_mass(self.horiz, layer_height)
+            edge = edge_mass(self.dist, layer_height)
             coeff_row[-1] += 2 * edge + parent_linkage
-            print(f'adding to coeff_row: {2 * edge + parent_linkage}')
         return coeff_row
 
     def constraint(self):
@@ -81,23 +64,37 @@ class Node:
 
     def __repr__(self):
         return (f'(Node {self.ID} with left {self.left} and right {self.right}'
-                f' and distance {self.horiz})')
+                f' and distance {self.dist})')
 
 
 """ test tree structure
-                    a
-                /       \
-                A       b
-                    /       \
-                    B       C
+                      a
+                /                   \
+                b                    c
+            /     |            /       \
+         A         d          e         f
+                /     |      /  |      /   |
+              B        C    D    E    F     G
 """
 
 A = Node()
 B = Node()
 C = Node()
-b = Node(B, C, 3)
-a = Node(A, b, 10)
-nonleaves = [b, a]
+D = Node()
+E = Node()
+F = Node()
+G = Node()
+d = Node(B, C, 1)
+e = Node(D, E, 5)
+f = Node(F, G, 1)
+b = Node(A, d, 3)
+c = Node(e, f, 2)
+a = Node(b, c, 0.5)
+
+nonleaves = [a, b, c, d, e, f]
+num_nonleaves = len(nonleaves)
+num_leaves = num_nonleaves + 1
+
 temp_coeff_rows = num_leaves
 temp_coeff_cols = num_leaves + 1
 temp_coeffs = np.zeros((temp_coeff_rows, temp_coeff_cols))
@@ -111,4 +108,5 @@ ords = -1 * temp_coeffs[:, -1]  # move ordinates to other side: flip sign
 solution = np.linalg.solve(coeffs, ords)
 print(f'solution:\n{solution}')
 if not all(i > 0 for i in solution):
-    raise ValueError("Input values yielded no solution. Consider increasing placeholder mass for first leaf")
+    raise ValueError("Input values yielded no solution. Consider increasing "
+                     "placeholder mass for first leaf")
